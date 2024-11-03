@@ -1,3 +1,6 @@
+# build.ps1
+
+# Accepts a parameter to select a command
 param (
     [Parameter(Mandatory=$true)]
     [ValidateSet("build", "deploy", "clean", "init")]
@@ -5,7 +8,7 @@ param (
 )
 
 # Variables
-$AppName = "local_conversion.exe" # Make sure it's "local_conversion" on Linux/macOS
+$AppName = "local_conversion.exe" # Adjust as needed for Linux/macOS
 $BinaryPath = "bin/$AppName"
 $SourceDir = "./input"
 $TargetDir = "./output"
@@ -26,7 +29,10 @@ function Build {
 function Deploy {
     Write-Output "Deploying the application to main..."
 
-    # Stash changes before switching to main
+    # Build the application in the develop branch
+    Build
+
+    # Stash any unsaved changes in develop
     git stash push -m "Temp changes before deploying"
 
     # Switch to main branch
@@ -47,17 +53,11 @@ function Deploy {
     if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
     if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
 
-    # Re-run build to ensure binary is up to date
-    Build
-    if (Test-Path $BinaryPath) {
-        # Move the binary to the bin directory and add only necessary files to main
-        Move-Item -Path $BinaryPath -Destination "bin/" -Force
-        git add bin/$AppName $SourceDir $TargetDir .gitignore README.md
-        git commit -m "Deploy binary and essential files to main branch"
-        git push origin main
-    } else {
-        Write-Output "Deployment failed: binary file not found."
-    }
+    # Move the binary to the bin directory and add only necessary files to main
+    Copy-Item -Path $BinaryPath -Destination "bin/" -Force
+    git add bin/$AppName $SourceDir $TargetDir .gitignore README.md
+    git commit -m "Deploy binary and essential files to main branch"
+    git push origin main
 
     # Switch back to develop branch and apply stashed changes
     git checkout develop
