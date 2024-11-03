@@ -19,10 +19,8 @@ func ConvertImages(sourceDir, targetDir, sourceFormat, targetFormat string, widt
 		return fmt.Errorf("failed to read source directory: %w", err)
 	}
 
-	// Запуск таймера для измерения времени выполнения
 	start := time.Now()
 
-	// Создаем прогресс-бар
 	bar := pb.StartNew(len(files))
 
 	var wg sync.WaitGroup

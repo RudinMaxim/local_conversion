@@ -4,8 +4,6 @@ formats:
     - gif
     - bmp
     - webp
-height: 600
-numworkers: 3
+numworkers: 1
 sourcedir: ./test/input
-targetdir: ./test/output
-width: 800
+targetdir: ./test/outpu
