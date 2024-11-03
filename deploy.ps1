@@ -29,16 +29,23 @@ function Build {
 function Deploy {
     Write-Output "Deploying the application to main..."
 
-    # Build the application in the develop branch
-    Build
-
     # Stash any unsaved changes in develop
+    git checkout develop
     git stash push -m "Temp changes before deploying"
 
-    # Switch to main branch
+    # Switch to main branch and merge develop
     git checkout main
+    git merge develop --no-commit
 
-    # Clean up existing files in main (excluding bin, input, output, .gitignore, and README.md)
+    # Ensure the necessary directories exist in main
+    if (!(Test-Path -Path "bin")) { New-Item -ItemType Directory -Path "bin" }
+    if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
+    if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
+
+    # Build the application in main
+    Build
+
+    # Clean up unnecessary files in main (excluding bin, input, output, .gitignore, and README.md)
     Write-Output "Cleaning up unnecessary files in main branch..."
     Get-ChildItem -Recurse | Where-Object {
         $_.FullName -notmatch "bin" -and
@@ -48,12 +55,7 @@ function Deploy {
         $_.Name -notmatch "README.md"
     } | Remove-Item -Recurse -Force
 
-    # Ensure the bin, input, and output directories exist on main
-    if (!(Test-Path -Path "bin")) { New-Item -ItemType Directory -Path "bin" }
-    if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
-    if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
-
-    # Move the binary to the bin directory and add only necessary files to main
+    # Add the binary and necessary directories to main
     Copy-Item -Path $BinaryPath -Destination "bin/" -Force
     git add bin/$AppName $SourceDir $TargetDir .gitignore README.md
     git commit -m "Deploy binary and essential files to main branch"
