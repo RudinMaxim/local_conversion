@@ -3,10 +3,8 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/RudinMaxim/local_conversion/internal/converter"
-	"github.com/h2non/filetype"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,29 +36,14 @@ var convertCmd = &cobra.Command{
 
 		var sourceFormat string
 		if sourceIdx == 0 {
-			if len(args) == 0 {
-				return fmt.Errorf("no input file provided for format detection")
-			}
-
-			sourceFormat, err = detectFileFormat(args[0])
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Detected source format: %s\n", sourceFormat)
+			sourceFormat = "auto"
 		} else {
 			sourceFormat = formats[sourceIdx-1]
 		}
 
-		var targetFormats []string
-		for _, f := range formats {
-			if f != sourceFormat {
-				targetFormats = append(targetFormats, f)
-			}
-		}
-
 		targetPrompt := promptui.Select{
 			Label: "Select target format",
-			Items: targetFormats,
+			Items: formats,
 			Templates: &promptui.SelectTemplates{
 				Label:    "{{ . | cyan }}",
 				Active:   "\U0001F449 {{ . | cyan }}",
@@ -87,30 +70,6 @@ var convertCmd = &cobra.Command{
 		}
 		return nil
 	},
-}
-
-func detectFileFormat(filePath string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	buf := make([]byte, 261)
-	if _, err := file.Read(buf); err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-
-	kind, err := filetype.Match(buf)
-	if err != nil {
-		return "", fmt.Errorf("failed to match file type: %w", err)
-	}
-
-	if kind == filetype.Unknown {
-		return "", fmt.Errorf("unknown file format")
-	}
-
-	return kind.Extension, nil
 }
 
 func init() {

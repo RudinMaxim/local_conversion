@@ -2,6 +2,7 @@ package converter
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -9,10 +10,11 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/disintegration/imaging"
+	"github.com/h2non/filetype"
 )
 
 func ConvertImages(sourceDir, targetDir, sourceFormat, targetFormat string, width, height, numWorkers int) error {
-	files, err := filepath.Glob(filepath.Join(sourceDir, "*."+sourceFormat))
+	files, err := filepath.Glob(filepath.Join(sourceDir, "*.*"))
 	if err != nil {
 		return fmt.Errorf("failed to read source directory: %w", err)
 	}
@@ -35,8 +37,25 @@ func ConvertImages(sourceDir, targetDir, sourceFormat, targetFormat string, widt
 		go func() {
 			defer wg.Done()
 			for file := range fileCh {
-				if err := processImage(file, targetDir, targetFormat, width, height); err != nil {
-					fmt.Printf("Error processing file %s: %v\n", file, err)
+				var format string
+				if sourceFormat == "auto" {
+					var err error
+					format, err = DetectFileFormat(file)
+					if err != nil {
+						fmt.Printf("Skipping file %s: %v\n", file, err)
+						bar.Increment()
+						continue
+					}
+				} else {
+					format = sourceFormat
+				}
+
+				if format != targetFormat {
+					if err := processImage(file, targetDir, targetFormat, width, height); err != nil {
+						fmt.Printf("Error processing file %s: %v\n", file, err)
+					}
+				} else {
+					fmt.Printf("Skipping file %s: source and target formats are the same\n", file)
 				}
 				bar.Increment()
 			}
@@ -75,4 +94,27 @@ func processImage(filePath, targetDir, format string, width, height int) error {
 	}
 
 	return nil
+}
+
+func DetectFileFormat(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+	buf := make([]byte, 261)
+	if _, err := file.Read(buf); err != nil {
+		return "", fmt.Errorf("failed to read file: %w", err)
+	}
+
+	kind, err := filetype.Match(buf)
+	if err != nil {
+		return "", fmt.Errorf("failed to match file type: %w", err)
+	}
+
+	if kind == filetype.Unknown {
+		return "", fmt.Errorf("unknown file format")
+	}
+
+	return kind.Extension, nil
 }

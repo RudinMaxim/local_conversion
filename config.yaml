@@ -1,0 +1,11 @@
+formats:
+    - jpg
+    - png
+    - gif
+    - bmp
+    - webp
+height: 600
+numworkers: 3
+sourcedir: ./test/input
+targetdir: ./test/output
+width: 800
