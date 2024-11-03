@@ -26,7 +26,6 @@ function Build {
 }
 
 # Deploy function to the main branch
-# Deploy function to the main branch
 function Deploy {
     Write-Output "Deploying the application to main..."
 
@@ -42,8 +41,13 @@ function Deploy {
     if (!(Test-Path -Path "input")) { New-Item -ItemType Directory -Path "input" }
     if (!(Test-Path -Path "output")) { New-Item -ItemType Directory -Path "output" }
 
-    # Build the application in main
+    # Build the application using the latest code from develop
+    # Switch back to develop to ensure the build context is right
+    git checkout develop
     Build
+
+    # Now switch back to main
+    git checkout main
 
     # Clean up unnecessary files in main (excluding bin, input, output, .gitignore, and README.md)
     Write-Output "Cleaning up unnecessary files in main branch..."
@@ -55,9 +59,9 @@ function Deploy {
         $_.Name -notmatch "README.md"
     } | Remove-Item -Recurse -Force
 
-    # Add the binary and necessary directories to main
+    # Add the binary to main
     Copy-Item -Path $BinaryPath -Destination "bin/" -Force
-    git add bin/$AppName input output .gitignore README.md
+    git add bin/$AppName .gitignore README.md
     git commit -m "Deploy binary and essential files to main branch"
     git push origin main
 
@@ -66,6 +70,7 @@ function Deploy {
     git stash pop
     Write-Output "Deployment complete. Develop branch unchanged."
 }
+
 
 
 # Clean function for input, output, and binary file
