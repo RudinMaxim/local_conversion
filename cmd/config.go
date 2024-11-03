@@ -16,18 +16,17 @@ func InitConfig() {
 
 	if err := viper.ReadInConfig(); err == nil {
 		numCPUs := runtime.NumCPU()
-		configNumWorkers := viper.GetInt("numWorkers")
+		configNumWorkers := viper.GetInt("numworkers")
 
 		if configNumWorkers > 0 {
-			if configNumWorkers > numCPUs/2 {
-				configNumWorkers = numCPUs / 2
-				fmt.Printf("Configured number of workers exceeds half of available CPUs, adjusting to: %d\n", configNumWorkers)
+			if configNumWorkers > numCPUs {
+				configNumWorkers = configNumWorkers / 2
+				fmt.Printf("Configured number of workers exceeds available CPUs, adjusting to: %d\n", configNumWorkers)
 			}
 		} else {
 			configNumWorkers = 2
 		}
 		viper.Set("numWorkers", configNumWorkers)
-		fmt.Printf("Number of workers set to: %d\n", configNumWorkers)
 
 		sourceDir := viper.GetString("sourceDir")
 		if err := checkDirectory(sourceDir); err != nil {
@@ -75,7 +74,9 @@ func InitConfig() {
 	viper.Set("sourceDir", sourceDir)
 	viper.Set("targetDir", targetDir)
 	viper.Set("numWorkers", numWorkers)
-	viper.Set("formats", []string{"jpg", "png", "gif", "bmp", "webp"})
+	viper.Set("formats", []string{"jpg", "png", "gif", "bmp", "tiff", "webp"})
+	viper.SetDefault("quality", 80)
+	viper.SetDefault("skipExisting", false)
 
 	if err := viper.WriteConfigAs("config.yaml"); err != nil {
 		fmt.Printf("Error creating config file: %v\n", err)

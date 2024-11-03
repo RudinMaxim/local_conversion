@@ -4,6 +4,8 @@ formats:
     - gif
     - bmp
     - webp
-numworkers: 1
+numworkers: 5
+quality: 80
+skipexisting: false
 sourcedir: ./test/input
-targetdir: ./test/outpu
+targetdir: ./test/output

@@ -6,7 +6,6 @@ require github.com/spf13/cobra v1.8.1
 
 require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
-	github.com/chai2010/webp v1.1.1 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
@@ -35,6 +34,7 @@ require (
 )
 
 require (
+	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/disintegration/imaging v1.6.2
 	github.com/h2non/filetype v1.1.3
