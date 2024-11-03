@@ -14,7 +14,7 @@ $TargetDir = "./output"
 # Функция для сборки приложения
 function Build {
     Write-Output "Assembling the application..."
-    go build -o $BinaryPath cmd/main.go
+    go build -o $BinaryPath main.go
     if (Test-Path $BinaryPath) {
         Write-Output "Assembly complete: $BinaryPath"
     } else {
@@ -32,7 +32,8 @@ function Deploy {
 
     # Переключаемся на main и выполняем деплой, затем возвращаемся в develop
     git checkout main
-    Build  # Пересборка перед деплоем
+    Build
+    Init
     if (Test-Path $BinaryPath) {
         if (!(Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin }
         Move-Item -Path $BinaryPath -Destination "bin/" -Force
