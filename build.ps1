@@ -6,7 +6,7 @@ param (
 )
 
 # Переменные
-$AppName = "cli-app.exe" # Убедитесь, что на Linux/macOS этот файл не имеет расширения .exe
+$AppName = "local_conversion.exe"
 $BinaryPath = "bin/$AppName"
 $SourceDir = "./input"
 $TargetDir = "./output"
@@ -14,7 +14,7 @@ $TargetDir = "./output"
 # Функция для сборки приложения
 function Build {
     Write-Output "Сборка приложения..."
-    go build -o $BinaryPath cmd/main.go
+    go build -o $BinaryPath main.go
     if ($?) {
         Write-Output "Сборка завершена: $BinaryPath"
     } else {
