@@ -1,78 +1,93 @@
-# Принимаем параметр для выбора команды
 param (
     [Parameter(Mandatory=$true)]
     [ValidateSet("build", "deploy", "clean", "init")]
     [string]$Command
 )
 
-# Переменные
-$AppName = "local_conversion.exe"
+# Variables
+$AppName = "local_conversion.exe" # Make sure it's "local_conversion" on Linux/macOS
 $BinaryPath = "bin/$AppName"
 $SourceDir = "./input"
 $TargetDir = "./output"
 
-# Функция для сборки приложения
+# Build function
 function Build {
-    Write-Output "Assembling the application..."
+    Write-Output "Building application..."
     go build -o $BinaryPath main.go
     if (Test-Path $BinaryPath) {
-        Write-Output "Assembly complete: $BinaryPath"
+        Write-Output "Build completed: $BinaryPath"
     } else {
         Write-Output "Build error: file $BinaryPath was not created."
         exit 1
     }
 }
 
-# Функция для деплоя приложения в ветку main
+# Deploy function to the main branch
 function Deploy {
-    Write-Output "Deploy the application to main..."
+    Write-Output "Deploying the application to main..."
 
-    # Сохраняем изменения в стэш
+    # Stash changes before switching to main
     git stash push -m "Temp changes before deploying"
 
-    # Переключаемся на main и выполняем деплой, затем возвращаемся в develop
+    # Switch to main branch
     git checkout main
+
+    # Clean up existing files in main (excluding bin, input, output, .gitignore, and README.md)
+    Write-Output "Cleaning up unnecessary files in main branch..."
+    Get-ChildItem -Recurse | Where-Object {
+        $_.FullName -notmatch "bin" -and
+        $_.FullName -notmatch "input" -and
+        $_.FullName -notmatch "output" -and
+        $_.Name -notmatch "\.gitignore" -and
+        $_.Name -notmatch "README.md"
+    } | Remove-Item -Recurse -Force
+
+    # Ensure the bin, input, and output directories exist on main
+    if (!(Test-Path -Path "bin")) { New-Item -ItemType Directory -Path "bin" }
+    if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
+    if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
+
+    # Re-run build to ensure binary is up to date
     Build
-    Init
     if (Test-Path $BinaryPath) {
-        if (!(Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin }
+        # Move the binary to the bin directory and add only necessary files to main
         Move-Item -Path $BinaryPath -Destination "bin/" -Force
-        git add bin/$AppName
-        git commit -m "Deploy binary to main branch"
+        git add bin/$AppName $SourceDir $TargetDir .gitignore README.md
+        git commit -m "Deploy binary and essential files to main branch"
         git push origin main
     } else {
-        Write-Output "Deployment failed: Binary file missing."
+        Write-Output "Deployment failed: binary file not found."
     }
-    git checkout develop
 
-    # Восстанавливаем изменения из стэша
+    # Switch back to develop branch and apply stashed changes
+    git checkout develop
     git stash pop
-    Write-Output "Deployment completed and changes restored to develop"
+    Write-Output "Deployment complete and changes restored in develop."
 }
 
-# Функция для очистки папок input, output и бинарника
+# Clean function for input, output, and binary file
 function Clean {
     Write-Output "Cleaning folders and binary file..."
     if (Test-Path $BinaryPath) { Remove-Item -Recurse -Force $BinaryPath }
     if (Test-Path "$SourceDir/*") { Remove-Item -Recurse -Force "$SourceDir/*" }
     if (Test-Path "$TargetDir/*") { Remove-Item -Recurse -Force "$TargetDir/*" }
-    Write-Output "Cleaning completed"
+    Write-Output "Clean completed."
 }
 
-# Функция для создания структуры проекта
+# Initialize the project structure
 function Init {
-    Write-Output "Creating a project structure..."
+    Write-Output "Initializing project structure..."
     if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
     if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
     if (!(Test-Path -Path "bin")) { New-Item -ItemType Directory -Path "bin" }
-    Write-Output "The project structure has been created"
+    Write-Output "Project structure initialized."
 }
 
-# Основная логика для выполнения команд
+# Main command logic
 switch ($Command) {
     "build" { Build }
     "deploy" { Deploy }
     "clean" { Clean }
     "init" { Init }
-    default { Write-Output "Неизвестная команда: $Command" }
+    default { Write-Output "Unknown command: $Command" }
 }
