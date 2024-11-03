@@ -6,14 +6,15 @@ param (
 )
 
 # Переменные
-$AppName = "local_conversion.exe"
+$AppName = "cli-app.exe" # Убедитесь, что на Linux/macOS этот файл не имеет расширения .exe
 $BinaryPath = "bin/$AppName"
 $SourceDir = "./input"
 $TargetDir = "./output"
 
 # Функция для сборки приложения
 function Build {
-    go build -o $BinaryPath main.go
+    Write-Output "Сборка приложения..."
+    go build -o $BinaryPath cmd/main.go
     if ($?) {
         Write-Output "Сборка завершена: $BinaryPath"
     } else {
@@ -23,7 +24,9 @@ function Build {
 
 # Функция для деплоя приложения в ветку main
 function Deploy {
-    Build
+    git stash push -m "Temp changes before deploying"
+
+    # Переключаемся на main, выполняем деплой, а затем возвращаемся в develop
     git checkout main
     if (!(Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin }
     Move-Item -Path $BinaryPath -Destination "bin/" -Force
@@ -31,6 +34,9 @@ function Deploy {
     git commit -m "Deploy binary to main branch"
     git push origin main
     git checkout develop
+
+    # Восстанавливаем изменения из стэша
+    git stash pop
 }
 
 # Функция для очистки папок input, output и бинарника
@@ -42,9 +48,11 @@ function Clean {
 
 # Функция для создания структуры проекта
 function Init {
+    Write-Output "Создание структуры проекта..."
     if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
     if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
     if (!(Test-Path -Path "bin")) { New-Item -ItemType Directory -Path "bin" }
+    Write-Output "Структура проекта создана"
 }
 
 # Основная логика для выполнения команд
