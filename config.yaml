@@ -3,8 +3,9 @@ formats:
     - png
     - gif
     - bmp
+    - tiff
     - webp
-numworkers: 5
+numworkers: 4
 quality: 80
 skipexisting: false
 sourcedir: ./test/input
