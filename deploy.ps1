@@ -26,6 +26,7 @@ function Build {
 }
 
 # Deploy function to the main branch
+# Deploy function to the main branch
 function Deploy {
     Write-Output "Deploying the application to main..."
 
@@ -33,14 +34,13 @@ function Deploy {
     git checkout develop
     git stash push -m "Temp changes before deploying"
 
-    # Switch to main branch and merge develop
+    # Switch to main branch
     git checkout main
-    git merge develop --no-commit
 
     # Ensure the necessary directories exist in main
     if (!(Test-Path -Path "bin")) { New-Item -ItemType Directory -Path "bin" }
-    if (!(Test-Path -Path $SourceDir)) { New-Item -ItemType Directory -Path $SourceDir }
-    if (!(Test-Path -Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir }
+    if (!(Test-Path -Path "input")) { New-Item -ItemType Directory -Path "input" }
+    if (!(Test-Path -Path "output")) { New-Item -ItemType Directory -Path "output" }
 
     # Build the application in main
     Build
@@ -57,15 +57,16 @@ function Deploy {
 
     # Add the binary and necessary directories to main
     Copy-Item -Path $BinaryPath -Destination "bin/" -Force
-    git add bin/$AppName $SourceDir $TargetDir .gitignore README.md
+    git add bin/$AppName input output .gitignore README.md
     git commit -m "Deploy binary and essential files to main branch"
     git push origin main
 
     # Switch back to develop branch and apply stashed changes
     git checkout develop
     git stash pop
-    Write-Output "Deployment complete and changes restored in develop."
+    Write-Output "Deployment complete. Develop branch unchanged."
 }
+
 
 # Clean function for input, output, and binary file
 function Clean {
