@@ -77,6 +77,11 @@ func InitConfig() {
 	viper.Set("formats", []string{"jpg", "png", "gif", "bmp", "tiff", "webp"})
 	viper.SetDefault("quality", 80)
 	viper.SetDefault("skipExisting", false)
+	viper.SetDefault("compression.quality", 80)
+	viper.SetDefault("compression.width", 0)
+	viper.SetDefault("compression.height", 0)
+	viper.SetDefault("compression.format", "auto")
+	viper.SetDefault("compression.skip-existing", false)
 
 	if err := viper.WriteConfigAs("config.yaml"); err != nil {
 		fmt.Printf("Error creating config file: %v\n", err)
@@ -169,6 +174,27 @@ func UpdateConfig() error {
 	fmt.Printf("Number of workers set to: %d\n", numWorkers)
 
 	viper.Set("numWorkers", numWorkers)
+
+	prompt = promptui.Prompt{
+		Label:   "Default compression quality (1-100)",
+		Default: fmt.Sprintf("%d", viper.GetInt("compression.quality")),
+		Validate: func(input string) error {
+			var quality int
+			if _, err := fmt.Sscanf(input, "%d", &quality); err != nil {
+				return fmt.Errorf("invalid number")
+			}
+			if quality < 1 || quality > 100 {
+				return fmt.Errorf("quality must be between 1 and 100")
+			}
+			return nil
+		},
+	}
+
+	if quality, err := prompt.Run(); err == nil {
+		var qualityInt int
+		fmt.Sscanf(quality, "%d", &qualityInt)
+		viper.Set("compression.quality", qualityInt)
+	}
 
 	if err := viper.WriteConfig(); err != nil {
 		return fmt.Errorf("failed to save configuration: %v", err)
