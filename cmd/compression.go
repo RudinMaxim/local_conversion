@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 
-	"github.com/RudinMaxim/local_conversion/internal/converter"
+	"github.com/RudinMaxim/local_conversion/internal/compression"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,22 +28,47 @@ func init() {
 	compressCmd.Flags().StringP("format", "f", "auto", "Target format (jpg, png, gif, bmp, or auto)")
 	compressCmd.Flags().BoolP("skip-existing", "s", false, "Skip existing files")
 
-	viper.BindPFlag("compression.quality", compressCmd.Flags().Lookup("quality"))
-	viper.BindPFlag("compression.width", compressCmd.Flags().Lookup("width"))
-	viper.BindPFlag("compression.height", compressCmd.Flags().Lookup("height"))
-	viper.BindPFlag("compression.format", compressCmd.Flags().Lookup("format"))
-	viper.BindPFlag("compression.skip-existing", compressCmd.Flags().Lookup("skip-existing"))
+	// Bind flags to configuration keys
+	_ = viper.BindPFlag("compression.quality", compressCmd.Flags().Lookup("quality"))
+	_ = viper.BindPFlag("compression.width", compressCmd.Flags().Lookup("width"))
+	_ = viper.BindPFlag("compression.height", compressCmd.Flags().Lookup("height"))
+	_ = viper.BindPFlag("compression.format", compressCmd.Flags().Lookup("format"))
+	_ = viper.BindPFlag("compression.skip-existing", compressCmd.Flags().Lookup("skip-existing"))
 }
 
 func runCompress(cmd *cobra.Command, args []string) error {
-	// Получаем параметры из командной строки или конфига
+	// Read configuration parameters
+	opts, err := buildCompressionOptions(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid options: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Execute compression with provided options
+	if err := compression.CompressionImages(ctx, opts); err != nil {
+		return fmt.Errorf("compression failed: %v", err)
+	}
+
+	log.Println("Compression completed successfully.")
+	return nil
+}
+
+func buildCompressionOptions(cmd *cobra.Command) (compression.CompressionOptions, error) {
 	quality := viper.GetInt("compression.quality")
+	if !isValidQuality(quality) {
+		return compression.CompressionOptions{}, errors.New("quality must be between 1 and 100")
+	}
+
 	width := viper.GetInt("compression.width")
 	height := viper.GetInt("compression.height")
-	format := viper.GetString("compression.format")
-	skipExisting := viper.GetBool("compression.skip-existing")
 
-	// Если параметры не указаны, запрашиваем их интерактивно
+	format := viper.GetString("compression.format")
+	if !isValidFormat(format) {
+		return compression.CompressionOptions{}, errors.New("unsupported format")
+	}
+
+	// Interactive prompts if not specified
 	if !cmd.Flags().Changed("quality") {
 		quality = promptQuality()
 	}
@@ -50,7 +77,7 @@ func runCompress(cmd *cobra.Command, args []string) error {
 		format = promptFormat()
 	}
 
-	opts := converter.ConversionOptions{
+	opts := compression.CompressionOptions{
 		SourceDir:    viper.GetString("sourceDir"),
 		TargetDir:    viper.GetString("targetDir"),
 		SourceFormat: "auto",
@@ -59,18 +86,13 @@ func runCompress(cmd *cobra.Command, args []string) error {
 		Height:       height,
 		NumWorkers:   viper.GetInt("numWorkers"),
 		Quality:      quality,
-		SkipExisting: skipExisting,
+		SkipExisting: viper.GetBool("compression.skip-existing"),
 		ErrorCallback: func(file string, err error) {
-			fmt.Printf("Error processing %s: %v\n", filepath.Base(file), err)
+			log.Printf("Error processing file %s: %v\n", filepath.Base(file), err)
 		},
 	}
 
-	ctx := context.Background()
-	if err := converter.ConvertImages(ctx, opts); err != nil {
-		return fmt.Errorf("compression failed: %v", err)
-	}
-
-	return nil
+	return opts, nil
 }
 
 func promptQuality() int {
@@ -79,11 +101,8 @@ func promptQuality() int {
 		Default: "80",
 		Validate: func(input string) error {
 			var quality int
-			if _, err := fmt.Sscanf(input, "%d", &quality); err != nil {
-				return fmt.Errorf("invalid number")
-			}
-			if quality < 1 || quality > 100 {
-				return fmt.Errorf("quality must be between 1 and 100")
+			if _, err := fmt.Sscanf(input, "%d", &quality); err != nil || !isValidQuality(quality) {
+				return errors.New("please enter a valid quality (1-100)")
 			}
 			return nil
 		},
@@ -91,6 +110,7 @@ func promptQuality() int {
 
 	result, err := prompt.Run()
 	if err != nil {
+		log.Println("Error during quality prompt, using default: 80")
 		return 80
 	}
 
@@ -103,18 +123,28 @@ func promptFormat() string {
 	prompt := promptui.Select{
 		Label: "Select target format",
 		Items: []string{"auto", "jpg", "png", "gif", "bmp"},
-		Templates: &promptui.SelectTemplates{
-			Label:    "{{ . | cyan }}",
-			Active:   "\U0001F449 {{ . | cyan }}",
-			Inactive: "  {{ . }}",
-			Selected: "\U0001F44D {{ . | green }}",
-		},
 	}
 
 	_, result, err := prompt.Run()
 	if err != nil {
+		log.Println("Error during format prompt, using default: auto")
 		return "auto"
 	}
 
 	return result
+}
+
+// Helpers for validation
+func isValidQuality(quality int) bool {
+	return quality >= 1 && quality <= 100
+}
+
+func isValidFormat(format string) bool {
+	supportedFormats := []string{"auto", "jpg", "png", "gif", "bmp"}
+	for _, f := range supportedFormats {
+		if format == f {
+			return true
+		}
+	}
+	return false
 }

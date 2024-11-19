@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		prompt := promptui.Select{
 			Label: "Choose an option",
-			Items: []string{"Convert files", "Configuration", "Exit"},
+			Items: []string{"Convert files", "Compress", "Configuration", "Exit"},
 			Templates: &promptui.SelectTemplates{
 				Label:    "{{ . | cyan }}",
 				Active:   "\U0001F449 {{ . | cyan }}",
@@ -40,6 +40,11 @@ var rootCmd = &cobra.Command{
 					fmt.Printf("Conversion failed: %v\n", err)
 				}
 			case 1:
+				clearConsole()
+				if err := compressCmd.RunE(cmd, args); err != nil {
+					fmt.Printf("Conversion failed: %v\n", err)
+				}
+			case 2:
 				clearConsole()
 				configurationMenu()
 			case 3:
